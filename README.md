@@ -1,0 +1,19 @@
+# Read All+
+
+A plugin for Revenge that adds an eye button to the guild bar. Tap it to mark unread servers and DMs as read: Mark All Read, Servers Only, or DMs Only. In the plugin settings you can exclude specific servers and DMs/groups by ID so they never get cleared.
+
+# How to install
+Paste this link into the Install Plugin section of the Revenge client:
+
+https://dxckie-cell.github.io/Read-All-Plus/ReadAll/
+
+# Preview
+<img width="1220" height="451" alt="Read All button" src="https://github.com/user-attachments/assets/71ad386f-0677-4998-be18-2d4ae3e2c815" />
+<img width="1220" height="790" alt="Read All options" src="https://github.com/user-attachments/assets/ac8aa4db-1ccb-415a-a3a1-6b106a61d7df" />
+<img width="1220" height="354" alt="Read All settings" src="https://github.com/user-attachments/assets/8f128874-6069-4ec8-bd14-efdaeec1bf73" />
+<img width="1220" height="355" alt="Read All excluded list" src="https://github.com/user-attachments/assets/8ccff92a-78ff-429d-91cf-7626990666fc" />
+
+# Credits
+Fork of [ReadAll](https://github.com/ApexTeamPL/Apex-Plugins/tree/master/plugins/ReadAll) from ApexTeamPL/Apex-Plugins (CC0). Original authors: Win8.1VMUser, btmc727, fshin.
+
+Changes in this fork: the manifest entry point now points at `src/index.ts` (upstream pointed at a nonexistent `src/index.tsx`), and `Settings.ts` is now `Settings.tsx` because it contains JSX.
