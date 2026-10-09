@@ -1,34 +1,19 @@
-# Apex Plugins
-This repo contains my own plugins for Revenge.
+# Read All+
 
-# How to install?
-Paste a plugin URL into the Plugins page of Revenge, following a basic format of:
-```
-https://apexteampl.github.io/Apex-Plugins/<PLUGIN_NAME>
-```
-## Or just copy plugin links from here!
-- [Message Scheduler](https://apexteampl.github.io/Apex-Plugins/messageScheduler/) - schedule messages to be sent at specific time or after a delay! (port from Vencore) **NOTE: As mentioned by one of Revenge mods, this plugin MAY FALL under selfbotting along with the og one from vencord/vencore, thus won't be proxied and added to offical list, USE AT YOUR OWN RISK!!!**
-- [More Alts](https://apexteampl.github.io/Apex-Plugins/MoreAlts/) - use more than 5 alts at Discord and easily switch between them from chat input. [For FAQs go here](https://github.com/ApexTeamPL/Apex-Plugins/wiki/MoreAlts)
-- [Read All](https://apexteampl.github.io/Apex-Plugins/ReadAll) - Read all server and DM notifications with single command - /readall (idea from btmc727)
-- [BetterNSFWGateBypass](https://apexteampl.github.io/Apex-Plugins/nsfwbypass) - Allows you to access NSFW channels without setting your age[.](https://m.youtube.com/watch?v=xvFZjo5PgG0) [Note](https://github.com/ApexTeamPL/Apex-Plugins/tree/master/docs/nsfwbypass)
+A plugin for Revenge that adds an eye button to the guild bar. Tap it to mark unread servers and DMs as read: Mark All Read, Servers Only, or DMs Only. In the plugin settings you can exclude specific servers and DMs/groups by ID so they never get cleared.
 
-__ __
+# How to install
+Paste this link into the Install Plugin section of the Revenge client:
 
-**Planned/in development plugins**
-- LastSeen - see when user was last offline - a port from Vencore
-- ValidUser - fix mentions for unknown users showing up as '@unknown-user'.
-- PlatformSwitcher - set custom platform status (mobile, web, desktop) - also port from Vencore
-- BetterSessionsRewritten - idea from Vencord, see new login notifications
+https://dxckie-cell.github.io/Read-All-Plus/ReadAll/
 
-__ __
+# Preview
+<img width="1220" height="451" alt="Read All button" src="https://github.com/user-attachments/assets/71ad386f-0677-4998-be18-2d4ae3e2c815" />
+<img width="1220" height="790" alt="Read All options" src="https://github.com/user-attachments/assets/ac8aa4db-1ccb-415a-a3a1-6b106a61d7df" />
+<img width="1220" height="354" alt="Read All settings" src="https://github.com/user-attachments/assets/8f128874-6069-4ec8-bd14-efdaeec1bf73" />
+<img width="1220" height="355" alt="Read All excluded list" src="https://github.com/user-attachments/assets/8ccff92a-78ff-429d-91cf-7626990666fc" />
 
-###  Maintainers
-- Win8.1VMUser - the creator of this project and [Vencore project](https://github.com/ApexTeamPL/Vencore), developer of those fantastic plugins!
-- Slara6804 - (it's me!), just a random girl who's too much into her Linux pharse, doing random things mostly to help people :3
-__ __
+# Credits
+Fork of [ReadAll](https://github.com/ApexTeamPL/Apex-Plugins/tree/master/plugins/ReadAll) from ApexTeamPL/Apex-Plugins (CC0). Original authors: Win8.1VMUser, btmc727, fshin.
 
-Apex Plugins is free and open source plugin list created by Apex Team developers (simply me and VMuser)[.](https://m.youtube.com/watch?v=xvFZjo5PgG0)
-
-__ __
-
-### BE AWARE OF FAKE ACCOUNTS DISTRIBUTING OUR AND OTHERS PLUGINS!!! PLEASE DOWNLOAD PLUGINS ONLY FROM OFFICAL REPOS (See [Vencore](https://raw.githubusercontent.com/ApexTeamPL/Plugins-List/refs/heads/main/offical-plugins.json) and [Purple-Eyez](https://plugins-list.pages.dev/) Plugin Browser)! THOSE ACCOUNTS HAVE BEEN FORKING OUR REPOS. FOR SECURITY REASONS WE WON'T WRITE WHO DID IT. YOU HAVE BEEN WARNED!
+Changes in this fork: the manifest entry point now points at `src/index.ts` (upstream pointed at a nonexistent `src/index.tsx`), and `Settings.ts` is now `Settings.tsx` because it contains JSX.
