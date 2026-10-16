@@ -1,4 +1,4 @@
-# Read All
+# Read All Plus
 Adds an eye button to the guild bar that marks unread servers and DMs as read, with options for all, servers only, or DMs only. Server and DM/group IDs can be excluded in the plugin settings.
 
 🔗 [**Install**](https://dxckie-cell.github.io/Read-All-Plus/ReadAll/)
