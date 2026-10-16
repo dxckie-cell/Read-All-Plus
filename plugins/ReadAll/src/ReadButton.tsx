@@ -1,126 +1,88 @@
 import { React, ReactNative as RN } from "@vendetta/metro/common";
 import { findByProps, findByStoreName } from "@vendetta/metro";
 import { showToast } from "@vendetta/ui/toasts";
-import { Forms, Button } from "@vendetta/ui/components";
+import { Button } from "@vendetta/ui/components";
 import { getAssetIDByName } from "@vendetta/ui/assets";
 import { isServerExcluded, isDMExcluded } from "./Settings";
 
 const { View, Pressable, StyleSheet, Image } = RN;
 const Haptic = findByProps("triggerHapticFeedback", "HapticFeedbackTypes");
 
+// Matches the native "+" and "explore" tiles in the guild bar.
+// Colors are the ones those tiles use in the current theme.
 const TILE = 48;
 const MARGIN = 4;
+const TILE_BG = "#090810";
+const CIRCLE_BG = "#E0DCED";
+
+export const FOOTER_EXTRA = TILE + 2 * MARGIN;
+
 const ALERT_KEY = "read_all_options_alert";
 
-const getStores = () => ({
-  GuildStore: findByStoreName("GuildStore"),
-  GuildChannelStore: findByStoreName("GuildChannelStore") || findByStoreName("ChannelStore"),
-  ChannelStore: findByStoreName("ChannelStore"),
-  ReadStateStore: findByStoreName("ReadStateStore"),
-  FluxDispatcher: findByProps("dispatch", "subscribe") || findByStoreName("Dispatcher")
-});
+type Mode = "all" | "servers" | "dms";
 
-const getDMChannels = (ChannelStore: any, GuildChannelStore: any) => {
-  const dmChannels: any[] = [];
-  const channelStore = ChannelStore || GuildChannelStore;
-  if (!channelStore) return dmChannels;
+const getUnreadChannels = (mode: Mode) => {
+  const GuildStore = findByStoreName("GuildStore");
+  const ChannelStore = findByStoreName("ChannelStore");
+  const GuildChannelStore = findByStoreName("GuildChannelStore") || ChannelStore;
+  const ReadStateStore = findByStoreName("ReadStateStore");
+  if (!ReadStateStore) return [];
 
-  if (channelStore.getPrivateChannels) {
+  const unread: { channelId: string; messageId: string | null; readStateType: number }[] = [];
+  const addIfUnread = (channel: any) => {
+    if (!channel?.id || !ReadStateStore.hasUnread?.(channel.id)) return;
+    unread.push({
+      channelId: channel.id,
+      messageId: ReadStateStore.lastMessageId?.(channel.id) || null,
+      readStateType: 0
+    });
+  };
+
+  if (mode !== "dms" && GuildStore) {
+    for (const guild of Object.values<any>(GuildStore.getGuilds())) {
+      if (!guild?.id || isServerExcluded(guild.id)) continue;
+      try {
+        const data = GuildChannelStore?.getChannels?.(guild.id);
+        [...(data?.SELECTABLE ?? []), ...(data?.VOCAL ?? [])].forEach((c: any) => addIfUnread(c?.channel || c));
+      } catch {}
+    }
+  }
+
+  if (mode !== "servers") {
     try {
-      const privateChannels = channelStore.getPrivateChannels();
-      if (privateChannels && typeof privateChannels === "object") {
-        Object.values(privateChannels).forEach((channel: any) => {
-          if (channel && channel.id) dmChannels.push(channel);
-        });
+      for (const channel of Object.values<any>(ChannelStore?.getPrivateChannels?.() ?? {})) {
+        if (channel?.id && !isDMExcluded(channel.id)) addIfUnread(channel);
       }
     } catch {}
   }
-  return dmChannels;
+
+  return unread;
 };
 
-const getUnreadChannels = (mode: "all" | "servers" | "dms") => {
-  const { GuildStore, GuildChannelStore, ChannelStore, ReadStateStore } = getStores();
-  if (!ReadStateStore) return [];
+const markRead = (mode: Mode) => {
+  const channels = getUnreadChannels(mode);
+  if (channels.length === 0) return showToast("No unread notifications!", getAssetIDByName("Small"));
 
-  const channels: Array<any> = [];
-
-  if ((mode === "all" || mode === "servers") && GuildStore) {
-    const guilds = GuildStore.getGuilds();
-    Object.values(guilds).forEach((guild: any) => {
-      if (!guild?.id || isServerExcluded(guild.id)) return;
-      try {
-        let guildChannels: any[] = [];
-        const channelStore = GuildChannelStore || ChannelStore;
-        if (channelStore?.getChannels) {
-          const channelData = channelStore.getChannels(guild.id);
-          if (channelData?.SELECTABLE) guildChannels = guildChannels.concat(channelData.SELECTABLE);
-          if (channelData?.VOCAL) guildChannels = guildChannels.concat(channelData.VOCAL);
-        }
-
-        guildChannels.forEach((c: any) => {
-          const channel = c?.channel || c;
-          if (!channel?.id) return;
-          if (ReadStateStore.hasUnread?.(channel.id)) {
-            channels.push({
-              channelId: channel.id,
-              messageId: ReadStateStore.lastMessageId?.(channel.id) || null,
-              readStateType: 0
-            });
-          }
-        });
-      } catch {}
-    });
-  }
-
-  if (mode === "all" || mode === "dms") {
-    const dmChannels = getDMChannels(ChannelStore, GuildChannelStore);
-    dmChannels.forEach((channel: any) => {
-      if (!channel?.id || isDMExcluded(channel.id)) return;
-      if (ReadStateStore.hasUnread?.(channel.id)) {
-        channels.push({
-          channelId: channel.id,
-          messageId: ReadStateStore.lastMessageId?.(channel.id) || null,
-          readStateType: 0
-        });
-      }
-    });
-  }
-
-  return channels;
+  const FluxDispatcher = findByProps("dispatch", "subscribe");
+  FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels });
+  showToast(`Cleared ${channels.length} unread!`, getAssetIDByName("Check"));
 };
 
-const executeClear = (mode: "all" | "servers" | "dms") => {
-  const { FluxDispatcher } = getStores();
-  const targetChannels = getUnreadChannels(mode);
-
-  if (targetChannels.length === 0) {
-    showToast("No unread notifications!", getAssetIDByName("Small"));
-    return;
-  }
-
-  FluxDispatcher.dispatch({
-    type: "BULK_ACK",
-    context: "APP",
-    channels: targetChannels
-  });
-
-  const label = mode === "all" ? "notifications" : mode === "servers" ? "server channels" : "DMs";
-  showToast(`Cleared ${targetChannels.length} ${label}!`, getAssetIDByName("Check"));
-};
+const OPTIONS: { text: string; color: string; mode: Mode }[] = [
+  { text: "Mark All Read", color: "brand", mode: "all" },
+  { text: "Servers Only", color: "grey", mode: "servers" },
+  { text: "DMs Only", color: "grey", mode: "dms" }
+];
 
 export default function ReadButton() {
   const handlePress = () => {
     Haptic?.triggerHapticFeedback?.(Haptic.HapticFeedbackTypes.SOFT);
 
-    const bunny = (globalThis as any).bunny;
-    const openAlert = bunny?.ui?.alerts?.openAlert;
-    const dismissAlert = bunny?.ui?.alerts?.dismissAlert;
-    const AlertModal = bunny?.ui?.components?.wrappers?.AlertModal;
+    const { openAlert, dismissAlert } = (globalThis as any).bunny?.ui?.alerts ?? {};
+    const AlertModal = (globalThis as any).bunny?.ui?.components?.wrappers?.AlertModal;
 
-    if (!openAlert || !AlertModal) {
-      executeClear("all");
-      return;
-    }
+    // No alert API available: just mark everything as read.
+    if (!openAlert || !AlertModal) return markRead("all");
 
     openAlert(
       ALERT_KEY,
@@ -130,34 +92,20 @@ export default function ReadButton() {
         actions: React.createElement(
           View,
           { style: { gap: 8, width: "100%", paddingTop: 8 } },
+          ...OPTIONS.map(({ text, color, mode }) =>
+            React.createElement(Button, {
+              key: mode,
+              text,
+              color,
+              size: "small",
+              onPress: () => {
+                dismissAlert(ALERT_KEY);
+                markRead(mode);
+              }
+            })
+          ),
           React.createElement(Button, {
-            text: "Mark All Read",
-            color: "brand",
-            size: "small",
-            onPress: () => {
-              dismissAlert(ALERT_KEY);
-              executeClear("all");
-            }
-          }),
-          React.createElement(Button, {
-            text: "Servers Only",
-            color: "grey",
-            size: "small",
-            onPress: () => {
-              dismissAlert(ALERT_KEY);
-              executeClear("servers");
-            }
-          }),
-          React.createElement(Button, {
-            text: "DMs Only",
-            color: "grey",
-            size: "small",
-            onPress: () => {
-              dismissAlert(ALERT_KEY);
-              executeClear("dms");
-            }
-          }),
-          React.createElement(Button, {
+            key: "cancel",
             text: "Cancel",
             color: "red",
             size: "small",
@@ -172,11 +120,8 @@ export default function ReadButton() {
     <View style={st.row}>
       <Pressable onPress={handlePress} accessibilityRole="button" accessibilityLabel="Read All Options">
         <View style={st.tile}>
-          <View style={st.circleBg}>
-            <Image
-              source={getAssetIDByName("ic_eye")}
-              style={{ width: 24, height: 24, tintColor: "#DBDEE1" }}
-            />
+          <View style={st.circle}>
+            <Image source={getAssetIDByName("ic_eye")} style={st.eye} />
           </View>
         </View>
       </Pressable>
@@ -188,24 +133,27 @@ const st = StyleSheet.create({
   row: {
     alignSelf: "stretch",
     alignItems: "center",
-    paddingTop: MARGIN,
-    paddingBottom: MARGIN,
+    paddingVertical: MARGIN
   },
   tile: {
     width: TILE,
     height: TILE,
-    borderRadius: 16,
-    backgroundColor: "#111214",
+    borderRadius: 12,
+    backgroundColor: TILE_BG,
     alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
+    justifyContent: "center"
   },
-  circleBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#2B2D31",
+  circle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: CIRCLE_BG,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "center"
+  },
+  eye: {
+    width: 15,
+    height: 15,
+    tintColor: TILE_BG
   }
 });

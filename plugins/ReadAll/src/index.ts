@@ -1,85 +1,62 @@
 import { after } from "@vendetta/patcher";
 import { React, ReactNative as RN } from "@vendetta/metro/common";
-import ReadButton from "./ReadButton";
+import ReadButton, { FOOTER_EXTRA } from "./ReadButton";
 import Settings from "./Settings";
 
-const { View } = RN;
-
-const TAG = "[ReadAll+]";
-const TILE = 48;
-const MARGIN = 4;
-
-let unpatchers: (() => boolean)[] = [];
-const patchedObjects = new WeakSet<object>();
+let unpatchers: (() => void)[] = [];
 let retryTimer: ReturnType<typeof setInterval> | undefined;
+const patched = new WeakSet<object>();
 
-function isUseGuildsBarProps(exports: any): boolean {
-  return (
-    typeof exports?.default === "function" &&
-    exports.default.name === "useGuildsBarProps"
-  );
-}
-
+// Adds the Read All button below the native buttons in the guild bar footer.
 function patchFooter(ret: any) {
   const ldp = ret?.listDataProps;
-  if (!ldp || patchedObjects.has(ldp)) return;
+  if (!ldp || patched.has(ldp)) return;
   if (typeof ldp.footerSize !== "function" || typeof ldp.renderFooter !== "function") return;
 
-  const origFooterSize = ldp.footerSize;
-  const origRenderFooter = ldp.renderFooter;
-  const extra = TILE + 2 * MARGIN;
-
-  ldp.footerSize = () => origFooterSize.call(ldp) + extra;
+  const { footerSize, renderFooter } = ldp;
+  ldp.footerSize = () => footerSize.call(ldp) + FOOTER_EXTRA;
   ldp.renderFooter = () =>
     React.createElement(
-      View,
+      RN.View,
       { style: { alignSelf: "stretch" }, collapsable: false },
-      origRenderFooter.call(ldp),
+      renderFooter.call(ldp),
       React.createElement(ReadButton)
     );
 
-  patchedObjects.add(ldp);
+  patched.add(ldp);
 }
 
-function scanRegistry(): number {
-  const modules = (globalThis as any)?.modules;
-  if (!modules) return 0;
+// Finds the already-loaded guild bar hook and patches it. Returns how many were patched.
+function patchGuildsBar(): number {
+  const modules = (globalThis as any).modules;
+  let count = 0;
 
-  let patchedCount = 0;
   for (const id in modules) {
-    const def = modules[id];
-    if (!def?.isInitialized) continue;
-    const exports = def.publicModule?.exports;
-    if (!exports) continue;
+    const exports = modules[id]?.isInitialized && modules[id].publicModule?.exports;
+    if (typeof exports?.default !== "function" || exports.default.name !== "useGuildsBarProps") continue;
 
-    if (isUseGuildsBarProps(exports)) {
-      try {
-        unpatchers.push(
-          after("default", exports, (_args: any[], ret: any) => patchFooter(ret))
-        );
-        patchedCount++;
-      } catch (e) {
-        console.log(TAG, `Failed to patch module ${id}:`, e);
-      }
+    try {
+      unpatchers.push(after("default", exports, (_args: any[], ret: any) => patchFooter(ret)));
+      count++;
+    } catch (e) {
+      console.log("[ReadAll]", `Failed to patch module ${id}:`, e);
     }
   }
-  return patchedCount;
+  return count;
 }
 
 export default {
   onLoad() {
-    const count = scanRegistry();
-    if (count === 0) {
-      let ticks = 0;
-      retryTimer = setInterval(() => {
-        ticks++;
-        const n = scanRegistry();
-        if (n > 0 || ticks >= 30) {
-          if (retryTimer) clearInterval(retryTimer);
-          retryTimer = undefined;
-        }
-      }, 1000);
-    }
+    if (patchGuildsBar() > 0) return;
+
+    // The guild bar module may not be loaded yet, so keep trying for up to 30s.
+    let tries = 0;
+    retryTimer = setInterval(() => {
+      if (patchGuildsBar() > 0 || ++tries >= 30) {
+        clearInterval(retryTimer);
+        retryTimer = undefined;
+      }
+    }, 1000);
   },
 
   onUnload() {
