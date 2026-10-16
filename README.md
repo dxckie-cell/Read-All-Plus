@@ -1,4 +1,4 @@
-# Read All+
+# Read All Plus
 
 A plugin for Revenge that adds an eye button to the guild bar. Tap it to mark unread servers and DMs as read: Mark All Read, Servers Only, or DMs Only. In the plugin settings you can exclude specific servers and DMs/groups by ID so they never get cleared.
 
