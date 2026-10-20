@@ -9,13 +9,15 @@ let retryTimer: ReturnType<typeof setInterval> | undefined;
 const patched = new WeakSet<object>();
 const reported = new Set<string>();
 
-// Discord has renamed this hook before, so match any "GuildsBar" style name.
-const GUILDS_BAR = /guilds?bar/i;
+// Discord has renamed and split this hook before, so match any guild bar/list style hook.
+const HOOK = /^use\w*guild\w*(bar|list|rail|nav)/i;
 const GUILD_UI = /guild.*(bar|list|rail|nav)|(bar|list|rail|nav).*guild/i;
+const FAST_LIST = /fastlist/i;
 
 // Adds the Read All button below the native buttons in the guild bar footer.
 function patchFooter(ret: any) {
-  const ldp = ret?.listDataProps;
+  // The footer props are either nested in listDataProps or returned directly.
+  const ldp = ret?.listDataProps ?? (ret?.footerSize && ret?.renderFooter ? ret : undefined);
   if (!ldp || patched.has(ldp)) return;
   if (typeof ldp.footerSize !== "function" || typeof ldp.renderFooter !== "function") return;
 
@@ -37,6 +39,7 @@ function patchFooter(ret: any) {
 function patchGuildsBar(): number {
   const modules = (globalThis as any).modules;
   const similar = new Set<string>();
+  const lists = new Set<string>();
   let count = 0;
 
   for (const id in modules) {
@@ -47,21 +50,22 @@ function patchGuildsBar(): number {
       // Only read values for "default" or names that look right, to avoid touching lazy getters.
       let fn: any;
       try {
-        fn = key === "default" || GUILDS_BAR.test(key) ? exports[key] : undefined;
+        fn = key === "default" || HOOK.test(key) ? exports[key] : undefined;
       } catch {
         continue;
       }
       const name: string = typeof fn === "function" ? fn.name || key : "";
       if (GUILD_UI.test(key) || GUILD_UI.test(name)) similar.add(name || key);
-      if (!GUILDS_BAR.test(name)) continue;
+      if (FAST_LIST.test(key) || FAST_LIST.test(name)) lists.add(name || key);
+      if (!HOOK.test(name)) continue;
 
-      const label = `hook ${id}.${key} (${name})`;
+      const label = `hook ${id}:${key} (${name})`;
       try {
         unpatchers.push(
           after(key, exports, (_args: any[], ret: any) => {
-            if (!reported.has(label)) {
+            if (!reported.has(label) && reported.size < 12) {
               reported.add(label);
-              note(label, `returns ${describe(ret)}, listDataProps ${describe(ret?.listDataProps)}`);
+              note(label, `returns ${describe(ret)}`);
             }
             patchFooter(ret);
           })
@@ -73,7 +77,8 @@ function patchGuildsBar(): number {
     }
   }
 
-  if (count === 0 && similar.size) note("no guild bar hook found, similar names", [...similar].slice(0, 40).join(", "));
+  if (similar.size) note("guild bar/list names", [...similar].slice(0, 40).join(", "));
+  if (lists.size) note("fast list names", [...lists].slice(0, 20).join(", "));
   return count;
 }
 

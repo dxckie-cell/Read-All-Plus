@@ -91,8 +91,8 @@ export default function Settings() {
         <ExcludeSection field="excludedDMs" title="Exclude DM / Group" placeholder="Enter Channel ID" />
         {Object.keys(debug).length > 0 && (
           <TableRowGroup title="Diagnostics">
-            {Object.entries(debug).map(([k, v]) => (
-              <TableRow key={k} label={k} subLabel={v} />
+            {Object.entries(debug).map(([k, v], i) => (
+              <TableRow key={i} label={`Info ${i + 1}`} subLabel={`${k}\n${v}`} />
             ))}
           </TableRowGroup>
         )}
