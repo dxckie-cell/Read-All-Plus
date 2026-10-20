@@ -2,10 +2,16 @@ import { after } from "@vendetta/patcher";
 import { React, ReactNative as RN } from "@vendetta/metro/common";
 import ReadButton, { FOOTER_EXTRA } from "./ReadButton";
 import Settings from "./Settings";
+import { note, describe } from "./debug";
 
 let unpatchers: (() => void)[] = [];
 let retryTimer: ReturnType<typeof setInterval> | undefined;
 const patched = new WeakSet<object>();
+const reported = new Set<string>();
+
+// Discord has renamed this hook before, so match any "GuildsBar" style name.
+const GUILDS_BAR = /guilds?bar/i;
+const GUILD_UI = /guild.*(bar|list|rail|nav)|(bar|list|rail|nav).*guild/i;
 
 // Adds the Read All button below the native buttons in the guild bar footer.
 function patchFooter(ret: any) {
@@ -24,24 +30,50 @@ function patchFooter(ret: any) {
     );
 
   patched.add(ldp);
+  note("footer", "button added");
 }
 
 // Finds the already-loaded guild bar hook and patches it. Returns how many were patched.
 function patchGuildsBar(): number {
   const modules = (globalThis as any).modules;
+  const similar = new Set<string>();
   let count = 0;
 
   for (const id in modules) {
     const exports = modules[id]?.isInitialized && modules[id].publicModule?.exports;
-    if (typeof exports?.default !== "function" || exports.default.name !== "useGuildsBarProps") continue;
+    if (!exports) continue;
 
-    try {
-      unpatchers.push(after("default", exports, (_args: any[], ret: any) => patchFooter(ret)));
-      count++;
-    } catch (e) {
-      console.log("[ReadAll]", `Failed to patch module ${id}:`, e);
+    for (const key of new Set(["default", ...Object.keys(exports)])) {
+      // Only read values for "default" or names that look right, to avoid touching lazy getters.
+      let fn: any;
+      try {
+        fn = key === "default" || GUILDS_BAR.test(key) ? exports[key] : undefined;
+      } catch {
+        continue;
+      }
+      const name: string = typeof fn === "function" ? fn.name || key : "";
+      if (GUILD_UI.test(key) || GUILD_UI.test(name)) similar.add(name || key);
+      if (!GUILDS_BAR.test(name)) continue;
+
+      const label = `hook ${id}.${key} (${name})`;
+      try {
+        unpatchers.push(
+          after(key, exports, (_args: any[], ret: any) => {
+            if (!reported.has(label)) {
+              reported.add(label);
+              note(label, `returns ${describe(ret)}, listDataProps ${describe(ret?.listDataProps)}`);
+            }
+            patchFooter(ret);
+          })
+        );
+        count++;
+      } catch (e) {
+        note(label, `could not patch: ${e}`);
+      }
     }
   }
+
+  if (count === 0 && similar.size) note("no guild bar hook found, similar names", [...similar].slice(0, 40).join(", "));
   return count;
 }
 
@@ -64,6 +96,7 @@ export default {
     retryTimer = undefined;
     unpatchers.forEach((u) => u());
     unpatchers = [];
+    reported.clear();
   },
 
   settings: Settings
