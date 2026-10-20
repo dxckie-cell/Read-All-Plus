@@ -4,16 +4,14 @@ import { showToast } from "@vendetta/ui/toasts";
 import { Button } from "@vendetta/ui/components";
 import { getAssetIDByName } from "@vendetta/ui/assets";
 import { isServerExcluded, isDMExcluded } from "./Settings";
+import { useThemeColors } from "./theme";
 
 const { View, Pressable, StyleSheet, Image } = RN;
 const Haptic = findByProps("triggerHapticFeedback", "HapticFeedbackTypes");
 
-// Matches the native "+" and "explore" tiles in the guild bar.
-// Colors are the ones those tiles use in the current theme.
+// Matches the native "+" tile in the guild bar; colors come from the current theme (see theme.ts).
 const TILE = 48;
 const MARGIN = 4;
-const TILE_BG = "#090810";
-const CIRCLE_BG = "#E0DCED";
 
 export const FOOTER_EXTRA = TILE + 2 * MARGIN;
 
@@ -75,6 +73,8 @@ const OPTIONS: { text: string; color: string; mode: Mode }[] = [
 ];
 
 export default function ReadButton() {
+  const colors = useThemeColors();
+
   const handlePress = () => {
     Haptic?.triggerHapticFeedback?.(Haptic.HapticFeedbackTypes.SOFT);
 
@@ -119,9 +119,9 @@ export default function ReadButton() {
   return (
     <View style={st.row}>
       <Pressable onPress={handlePress} accessibilityRole="button" accessibilityLabel="Read All Options">
-        <View style={st.tile}>
-          <View style={st.circle}>
-            <Image source={getAssetIDByName("ic_eye")} style={st.eye} />
+        <View style={[st.tile, { backgroundColor: colors.tile }]}>
+          <View style={[st.circle, { backgroundColor: colors.circle }]}>
+            <Image source={getAssetIDByName("ic_eye")} style={[st.eye, { tintColor: colors.glyph }]} />
           </View>
         </View>
       </Pressable>
@@ -139,7 +139,6 @@ const st = StyleSheet.create({
     width: TILE,
     height: TILE,
     borderRadius: 12,
-    backgroundColor: TILE_BG,
     alignItems: "center",
     justifyContent: "center"
   },
@@ -147,13 +146,11 @@ const st = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: CIRCLE_BG,
     alignItems: "center",
     justifyContent: "center"
   },
   eye: {
     width: 15,
-    height: 15,
-    tintColor: TILE_BG
+    height: 15
   }
 });
