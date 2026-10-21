@@ -3,7 +3,6 @@ import { storage } from "@vendetta/plugin";
 import { findByProps } from "@vendetta/metro";
 import { useProxy } from "@vendetta/storage";
 import { getAssetIDByName } from "@vendetta/ui/assets";
-import { debug } from "./debug";
 
 const { ScrollView } = findByProps("ScrollView");
 const { TableRowGroup, TableRow, Stack, TextInput } = findByProps(
@@ -89,13 +88,6 @@ export default function Settings() {
       <Stack spacing={8}>
         <ExcludeSection field="excludedServers" title="Exclude Server" placeholder="Enter Server ID" />
         <ExcludeSection field="excludedDMs" title="Exclude DM / Group" placeholder="Enter Channel ID" />
-        {Object.keys(debug).length > 0 && (
-          <TableRowGroup title="Diagnostics">
-            {Object.entries(debug).map(([k, v], i) => (
-              <TableRow key={i} label={`Info ${i + 1}`} subLabel={`${k}\n${v}`} />
-            ))}
-          </TableRowGroup>
-        )}
       </Stack>
     </ScrollView>
   );

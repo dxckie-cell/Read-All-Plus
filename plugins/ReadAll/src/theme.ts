@@ -1,6 +1,5 @@
 import { findByProps, findByStoreName } from "@vendetta/metro";
 import { semanticColors } from "@vendetta/ui";
-import { note } from "./debug";
 
 type Rgba = [number, number, number, number];
 type Role = "backdrop" | "tile" | "circle";
@@ -65,32 +64,22 @@ let matched: Partial<Record<Role, string>> | undefined;
 
 function calibrate(): Partial<Record<Role, string>> {
   const tokens = allTokens();
-  const names = Object.keys(tokens);
   const found: Partial<Record<Role, string>> = {};
-  if (names.length === 0) {
-    note("theme", "no color tokens available, using fixed colors");
-    return found;
-  }
 
   const backdrop = parse(NATIVE.backdrop)!;
-  const current = names.flatMap((name) => {
+  const current = Object.keys(tokens).flatMap((name) => {
     const value = parse(resolveToken(tokens[name]));
     return value ? [{ name, color: flatten(value, backdrop) }] : [];
   });
 
   for (const role of ["backdrop", "tile", "circle"] as Role[]) {
     const target = parse(NATIVE[role])!;
-    const scored = current.map(({ name, color }) => ({ name, d: distance(color, target) })).sort((a, b) => a.d - b.d);
-    const close = scored.filter((s) => s.d <= TOLERANCE);
+    const close = current
+      .map(({ name, color }) => ({ name, d: distance(color, target) }))
+      .filter((s) => s.d <= TOLERANCE)
+      .sort((a, b) => a.d - b.d);
     const best = close.find((s) => PREFER[role].test(s.name)) ?? close[0];
-
-    if (best) {
-      found[role] = best.name;
-      note(`theme ${role}`, `${best.name} (off by ${best.d.toFixed(1)})`);
-    } else {
-      const nearest = scored.slice(0, 3).map((s) => `${s.name} ${s.d.toFixed(0)}`).join(", ");
-      note(`theme ${role}`, `no matching token, using ${NATIVE[role]}. Nearest: ${nearest}`);
-    }
+    if (best) found[role] = best.name;
   }
   return found;
 }
